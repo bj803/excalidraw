@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-docker:
-    runs-on: ubuntu-24.1
+    runs-on: ubuntu-22.04.5
     steps:
       - uses: actions/checkout@v2
       - run: docker build -t excalidraw .
