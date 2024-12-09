@@ -1,12 +1,12 @@
-name: Build Docker Image on Ubuntu 22.04
+name: Publish Docker Image to GitHub Packages
 
 on:
   push:
-    branches:
-      - main  # 或者你希望触发构建的分支名称
+    tags:
+      - 'v*' # 当推送一个以 'v' 开头的标签时触发工作流
 
 jobs:
-  build:
+  publish-docker:
     runs-on: ubuntu-22.04
 
     steps:
@@ -17,22 +17,19 @@ jobs:
       uses: docker/setup-buildx-action@v1
 
     - name: Build Docker image
-      uses: docker/build-push-action@v2
-      with:
-        context: .
-        push: false  # 如果你不打算推送到 Docker Hub 或其他容器注册表，则设置为 false
-        tags: excalidraw:latest  # 你可以根据需要自定义镜像标签
+      run: docker build -t excalidraw:latest .
 
-    # 如果你打算推送到 Docker Hub 或其他容器注册表，请添加以下步骤：
-    # - name: Login to Docker Hub
-    #   run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-    #   env:
-    #     DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-    #     DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+    - name: Save Docker image to tar file
+      run: docker save -o excalidraw.tar excalidraw:latest
 
-    # - name: Push Docker image to Docker Hub
-    #   uses: docker/build-push-action@v2
-    #   with:
-    #     context: .
-    #     push: true
-    #     tags: ${{ secrets.DOCKER_USERNAME }}/excalidraw:latest
+    - name: Log in to GitHub Packages
+      run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.repository_owner }}" --password-stdin
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Push Docker image to GitHub Packages
+      run: |
+        IMAGE_NAME="ghcr.io/${{ github.repository }}:latest"
+        docker load -i excalidraw.tar
+        docker tag excalidraw:latest "$IMAGE_NAME"
+        docker push "$IMAGE_NAME"
